@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages li { padding: 5px 10px; }
+      #messages li:nth-child(odd) { background: #eee; }
+    </style>
+  </head>
+  <!--
+  <body>
+    <ul id="messages"></ul>
+    <form action="">
+      <input id="m" autocomplete="off" /><button>Send</button>
+    </form>
+  </body>
+  -->
+
+  <canvas id="canvas" width="450" height="450"></canvas>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+  <script>
+  $(document).ready(function(){
+    //Canvas stuff
+    var canvas = $("#canvas")[0];
+    var ctx = canvas.getContext("2d");
+    var w = $("#canvas").width();
+    var h = $("#canvas").height();
+    var last_dir;
+    var count = 3;
+    var countInterval;
+    var player_number;
+
+    //Lets paint the canvas now
+    clear_box();
+
+    function paint_block(x,y)
+    {
+      var block_size = 10;
+      ctx.fillStyle = "blue";
+      ctx.fillRect(x*block_size, y*block_size, block_size, block_size);
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(x*block_size, y*block_size, block_size, block_size);
+    }
+
+    function update_center_text(text){
+        clear_box();
+        ctx.font = "30px Arial";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "black";
+        ctx.strokeStyle = "black";
+        ctx.fillText(text,w/2,h/2);
+    }
+
+    function clear_box()
+    {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = "black";
+        ctx.strokeRect(0, 0, w, h);
+    }
+
+  	var socket = io();
+    $(document).keydown(function(e) {
+        var key = e.which;
+        //var map = {"37" : "left", "38" : "up", "39" : "right", "40" : "down"};
+        
+        if(key == last_dir) return;
+        else if(key == "37" && last_dir != "39") dir = "left";
+        else if(key == "38" && last_dir != "40") dir = "up";
+        else if(key == "39" && last_dir != "37") dir = "right";
+        else if(key == "40" && last_dir != "38") dir = "down";
+        //last_dir = key
+        socket.emit('update direction', dir);
+    });
+
+    socket.on('update middle', function(text) {
+        update_center_text(text)
+    });
+
+    socket.on('player', function(number) {
+        player_number = number;
+    });
+    
+    socket.on('update tick', function(state){
+      clear_box();
+      for(var i = 0; i < 2; i++)
+      {
+        snake = state["user_states"][i]["snake"];
+        for(var j = 0; j < snake.length; j++)
+        {
+          paint_block(snake[j].x, snake[j].y);
+        }
+      }
+      paint_block(state["food"].x, state["food"].y);
+
+      var map = {"left": "37", "up": "38", "right" : "39", "down": "40" };
+      last_dir = map[state["user_states"][player_number]["direction"]];
+    });
+  });
+  </script>
+</html>
